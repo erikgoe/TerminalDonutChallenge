@@ -67,13 +67,22 @@ int main() {
     // Some data
     bool running = true;
     auto x_rotation = Matrix3::rotationAroundX( 0.01 );
-    float render_buffer[64][64];
-    float z_buffer[64][64];
+    const size_t BUFFER_SIZE_X = 64, BUFFER_SIZE_Y = 32;
+    float render_buffer[BUFFER_SIZE_X][BUFFER_SIZE_Y];
+    float z_buffer[BUFFER_SIZE_X][BUFFER_SIZE_Y];
     Vector3 center = Vector3{ 15.f, 15.f, 15.f };
 
 
     // Main loop
     while ( running ) {
+        // Clear buffer
+        for ( size_t y = 0; y < BUFFER_SIZE_Y; y++ ) {
+            for ( size_t x = 0; x < BUFFER_SIZE_X; x++ ) {
+                render_buffer[x][y] = 0.f;
+                z_buffer[x][y] = 0.f;
+            }
+        }
+
         // Rotate and project the torus
         for ( size_t i = 0; i < TORUS_SECTIONS * RING_SECTIONS; i++ ) {
             auto final_position = x_rotation * torus[i];
@@ -81,6 +90,19 @@ int main() {
             render_buffer[static_cast<int>( final_position.x )][static_cast<int>( final_position.y )] = 1.f;
             z_buffer[static_cast<int>( final_position.x )][static_cast<int>( final_position.y )] = final_position.z;
         }
+
+        // Render to terminal
+        std::cout << "\033[3J\033[1;1H";
+        for ( size_t y = 0; y < BUFFER_SIZE_Y; y++ ) {
+            for ( size_t x = 0; x < BUFFER_SIZE_X; x++ ) {
+                if ( render_buffer[x][y] != 0 )
+                    std::cout << "X";
+                else
+                    std::cout << " ";
+            }
+            std::cout << "\n";
+        }
+        std::cout << std::endl;
 
         // Ensure ~60 FPS
         std::this_thread::sleep_for( std::chrono::milliseconds( 16 ) );
