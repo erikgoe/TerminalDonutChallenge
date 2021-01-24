@@ -13,7 +13,7 @@ struct Vector3 {
 
     Vector3 operator+( const Vector3 &other ) const { return Vector3{ x + other.x, y + other.y, z + other.z }; }
     Vector3 operator-( const Vector3 &other ) const { return Vector3{ x - other.x, y - other.y, z - other.z }; }
-    Vector3 operator*( const float &factor ) const { return Vector3{ x - factor, y - factor, z - factor }; }
+    Vector3 operator*( const float &factor ) const { return Vector3{ x * factor, y * factor, z * factor }; }
 
     float dot_product( const Vector3 &other ) const { return x * other.x + y * other.y + z * other.z; }
 };
@@ -45,7 +45,7 @@ struct Matrix3 {
 };
 
 int main() {
-    // Create a simple ring in the 2d plane
+    // Create a simple ring in the xy-plane
     const size_t RING_SECTIONS = 16;
     Vector3 basic_ring[RING_SECTIONS];
     for ( size_t i = 0; i < RING_SECTIONS; i++ )
@@ -57,24 +57,24 @@ int main() {
     Vector3 normals[RING_SECTIONS * TORUS_SECTIONS];
     Vector3 index = Vector3{ 4.f, 0.f, 0.f };
     for ( size_t i = 0; i < TORUS_SECTIONS; i++ ) {
-        auto rotation = Matrix3::rotationAroundY( i * M_PI / TORUS_SECTIONS );
+        auto rotation = Matrix3::rotationAroundY( i * M_PI * 2 / TORUS_SECTIONS );
         for ( size_t j = 0; j < RING_SECTIONS; j++ ) {
-            normals[i * RING_SECTIONS + j] = rotation * basic_ring[i];
-            torus[i * RING_SECTIONS + j] = rotation * ( index + basic_ring[i] );
+            normals[i * RING_SECTIONS + j] = rotation * basic_ring[j];
+            torus[i * RING_SECTIONS + j] = rotation * ( index + basic_ring[j] );
         }
     }
 
     // Some data
     bool running = true;
-    auto x_rotation = Matrix3::rotationAroundX( 0.01 );
-    const size_t BUFFER_SIZE_X = 64, BUFFER_SIZE_Y = 32;
+    const size_t BUFFER_SIZE_X = 64, BUFFER_SIZE_Y = 24;
     float render_buffer[BUFFER_SIZE_X][BUFFER_SIZE_Y];
     float z_buffer[BUFFER_SIZE_X][BUFFER_SIZE_Y];
-    Vector3 center = Vector3{ 15.f, 15.f, 15.f };
-
+    Vector3 center = Vector3{ 16, 16, 16 };
+    float time = 0.f;
 
     // Main loop
     while ( running ) {
+        auto x_rotation = Matrix3::rotationAroundX( M_PI / 2 * time );
         // Clear buffer
         for ( size_t y = 0; y < BUFFER_SIZE_Y; y++ ) {
             for ( size_t x = 0; x < BUFFER_SIZE_X; x++ ) {
@@ -86,9 +86,11 @@ int main() {
         // Rotate and project the torus
         for ( size_t i = 0; i < TORUS_SECTIONS * RING_SECTIONS; i++ ) {
             auto final_position = x_rotation * torus[i];
-            final_position = final_position * 30.f + center; // adjust position into viewport
-            render_buffer[static_cast<int>( final_position.x )][static_cast<int>( final_position.y )] = 1.f;
-            z_buffer[static_cast<int>( final_position.x )][static_cast<int>( final_position.y )] = final_position.z;
+            final_position = final_position + center; // adjust position into viewport
+            render_buffer[static_cast<int>( std::round( final_position.x ) )]
+                         [static_cast<int>( std::round( final_position.y ) )] += 1.f;
+            z_buffer[static_cast<int>( std::round( final_position.x ) )]
+                    [static_cast<int>( std::round( final_position.y ) )] = final_position.z;
         }
 
         // Render to terminal
@@ -102,10 +104,11 @@ int main() {
             }
             std::cout << "\n";
         }
-        std::cout << std::endl;
+        std::cout << std::flush;
 
         // Ensure ~60 FPS
         std::this_thread::sleep_for( std::chrono::milliseconds( 16 ) );
+        time += 0.01;
     }
 
     return 0;
