@@ -46,13 +46,13 @@ struct Matrix3 {
 
 int main() {
     // Create a simple ring in the xy-plane
-    const size_t RING_SECTIONS = 16;
+    const size_t RING_SECTIONS = 32;
     Vector3 basic_ring[RING_SECTIONS];
     for ( size_t i = 0; i < RING_SECTIONS; i++ )
         basic_ring[i] = Vector3::in_xy_circle( i * M_PI * 2 / RING_SECTIONS );
 
     // Create the torus
-    const size_t TORUS_SECTIONS = 32;
+    const size_t TORUS_SECTIONS = 128;
     Vector3 torus[RING_SECTIONS * TORUS_SECTIONS];
     Vector3 normals[RING_SECTIONS * TORUS_SECTIONS];
     Vector3 index = Vector3{ 4.f, 0.f, 0.f };
@@ -66,15 +66,17 @@ int main() {
 
     // Some data
     bool running = true;
-    const size_t BUFFER_SIZE_X = 64, BUFFER_SIZE_Y = 24;
+    float character_ratio = 9.f / 20.f;
+    const size_t BUFFER_SIZE_X = 64, BUFFER_SIZE_Y = BUFFER_SIZE_X * character_ratio;
     float render_buffer[BUFFER_SIZE_X][BUFFER_SIZE_Y];
     float z_buffer[BUFFER_SIZE_X][BUFFER_SIZE_Y];
-    Vector3 center = Vector3{ 16, 16, 16 };
+    Vector3 center = Vector3{ 32.f, 32.f, 32.f };
     float time = 0.f;
 
     // Main loop
     while ( running ) {
-        auto x_rotation = Matrix3::rotationAroundX( M_PI / 2 * time );
+        auto x_rotation = Matrix3::rotationAroundX( M_PI / 2.f * std::sin( time * 1.2 ) );
+        auto y_rotation = Matrix3::rotationAroundY( M_PI / 2.f * std::sin( time + 1.2 ) );
         // Clear buffer
         for ( size_t y = 0; y < BUFFER_SIZE_Y; y++ ) {
             for ( size_t x = 0; x < BUFFER_SIZE_X; x++ ) {
@@ -85,12 +87,12 @@ int main() {
 
         // Rotate and project the torus
         for ( size_t i = 0; i < TORUS_SECTIONS * RING_SECTIONS; i++ ) {
-            auto final_position = x_rotation * torus[i];
-            final_position = final_position + center; // adjust position into viewport
+            auto final_position = y_rotation * ( x_rotation * torus[i] );
+            final_position = final_position * 5.f + center; // adjust position into viewport
             render_buffer[static_cast<int>( std::round( final_position.x ) )]
-                         [static_cast<int>( std::round( final_position.y ) )] += 1.f;
+                         [static_cast<int>( std::round( final_position.y * character_ratio ) )] += 1.f;
             z_buffer[static_cast<int>( std::round( final_position.x ) )]
-                    [static_cast<int>( std::round( final_position.y ) )] = final_position.z;
+                    [static_cast<int>( std::round( final_position.y * character_ratio ) )] = final_position.z;
         }
 
         // Render to terminal
