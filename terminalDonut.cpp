@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cmath>
+#include <thread> // just for this_thread::sleep_for
 
 struct Vector3 {
     float x = 0.f, y = 0.f, z = 0.f;
@@ -12,6 +13,7 @@ struct Vector3 {
 
     Vector3 operator+( const Vector3 &other ) const { return Vector3{ x + other.x, y + other.y, z + other.z }; }
     Vector3 operator-( const Vector3 &other ) const { return Vector3{ x - other.x, y - other.y, z - other.z }; }
+    Vector3 operator*( const float &factor ) const { return Vector3{ x - factor, y - factor, z - factor }; }
 
     float dot_product( const Vector3 &other ) const { return x * other.x + y * other.y + z * other.z; }
 };
@@ -62,6 +64,27 @@ int main() {
         }
     }
 
+    // Some data
+    bool running = true;
+    auto x_rotation = Matrix3::rotationAroundX( 0.01 );
+    float render_buffer[64][64];
+    float z_buffer[64][64];
+    Vector3 center = Vector3{ 15.f, 15.f, 15.f };
+
+
+    // Main loop
+    while ( running ) {
+        // Rotate and project the torus
+        for ( size_t i = 0; i < TORUS_SECTIONS * RING_SECTIONS; i++ ) {
+            auto final_position = x_rotation * torus[i];
+            final_position = final_position * 30.f + center; // adjust position into viewport
+            render_buffer[static_cast<int>( final_position.x )][static_cast<int>( final_position.y )] = 1.f;
+            z_buffer[static_cast<int>( final_position.x )][static_cast<int>( final_position.y )] = final_position.z;
+        }
+
+        // Ensure ~60 FPS
+        std::this_thread::sleep_for( std::chrono::milliseconds( 16 ) );
+    }
 
     return 0;
 }
