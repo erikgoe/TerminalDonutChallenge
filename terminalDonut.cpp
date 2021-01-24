@@ -55,7 +55,7 @@ int main() {
     const size_t TORUS_SECTIONS = 128;
     Vector3 torus[RING_SECTIONS * TORUS_SECTIONS];
     Vector3 normals[RING_SECTIONS * TORUS_SECTIONS];
-    Vector3 index = Vector3{ 4.f, 0.f, 0.f };
+    Vector3 index = Vector3{ 2.5f, 0.f, 0.f };
     for ( size_t i = 0; i < TORUS_SECTIONS; i++ ) {
         auto rotation = Matrix3::rotationAroundY( i * M_PI * 2 / TORUS_SECTIONS );
         for ( size_t j = 0; j < RING_SECTIONS; j++ ) {
@@ -71,6 +71,7 @@ int main() {
     float render_buffer[BUFFER_SIZE_X][BUFFER_SIZE_Y];
     float z_buffer[BUFFER_SIZE_X][BUFFER_SIZE_Y];
     Vector3 center = Vector3{ 32.f, 32.f, 32.f };
+    Vector3 light_dir = Vector3::in_xy_circle( -M_PI / 2.f );
     float time = 0.f;
 
     // Main loop
@@ -88,21 +89,27 @@ int main() {
         // Rotate and project the torus
         for ( size_t i = 0; i < TORUS_SECTIONS * RING_SECTIONS; i++ ) {
             auto final_position = y_rotation * ( x_rotation * torus[i] );
-            final_position = final_position * 5.f + center; // adjust position into viewport
-            render_buffer[static_cast<int>( std::round( final_position.x ) )]
-                         [static_cast<int>( std::round( final_position.y * character_ratio ) )] += 1.f;
-            z_buffer[static_cast<int>( std::round( final_position.x ) )]
-                    [static_cast<int>( std::round( final_position.y * character_ratio ) )] = final_position.z;
+            auto final_normal = y_rotation * ( x_rotation * normals[i] );
+            final_position = final_position * 6.f + center; // adjust position into viewport
+            int x = static_cast<int>( std::round( final_position.x ) );
+            int y = static_cast<int>( std::round( final_position.y * character_ratio ) );
+            int z = static_cast<int>( std::round( final_position.z ) );
+            if ( z_buffer[x][y] + 0.1 < z ) {
+                render_buffer[x][y] = final_normal.dot_product( light_dir );
+                z_buffer[x][y] = final_position.z;
+            }
         }
 
         // Render to terminal
         std::cout << "\033[3J\033[1;1H";
         for ( size_t y = 0; y < BUFFER_SIZE_Y; y++ ) {
             for ( size_t x = 0; x < BUFFER_SIZE_X; x++ ) {
-                if ( render_buffer[x][y] != 0 )
-                    std::cout << "X";
-                else
-                    std::cout << " ";
+                if ( render_buffer[x][y] == 0.f ) {
+                    std::cout << ' ';
+                } else {
+                    int val = render_buffer[x][y] * 6 + 6;
+                    std::cout << ( (char *) ".,-~:;=!*#$@" )[val];
+                }
             }
             std::cout << "\n";
         }
